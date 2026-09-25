@@ -1,16 +1,17 @@
 # PNW Deuce Music AI
 
-A deterministic, compiler-style music planning system. It validates structured requests, creates immutable Pydantic plans, and writes Type-1 Standard MIDI files with a dependency-free serializer.
+The canonical implementation is `pnw_deuce_music_ai.py`. It is a deterministic, schema-first music compiler with exactly one MIDI path: **mido**.
 
-## Features
-- Pydantic v2 models with `frozen=True` and `extra="forbid"`
-- Deterministic theory, drum, bass, and melody generation
-- Cross-process stable seeded output; no use of Python's randomized `hash()`
-- Custom standard-library MIDI serializer (`PPQ = 480`), not a mido-based writer
-- MIDI bounds, overlap, timing, and metadata validation before writing
-- Headroom-safe NumPy audio utility and safe relative output paths
+## Contract
 
-## Quick start
+- Pydantic v2 models are immutable (`frozen=True`) and reject unknown fields (`extra="forbid"`).
+- `build_song_plan(seed)` uses explicit seeded RNG and stable integer pitch-class mappings. Python `hash()` is never used.
+- `export_mido_midi(plan)` is the sole canonical exporter.
+- MIDI is Type 1 at 480 PPQ with four tracks: Conductor, Drums (channel 10 / zero-based 9), 808 (channel 1 / zero-based 0), and Melody (channel 2 / zero-based 1).
+- Plans and mido serialization are deterministic across processes and `PYTHONHASHSEED` values.
+- Audio/headroom behavior must remain explicit; no silent normalization is part of MIDI export.
+
+## Run
 
 ```bash
 python -m venv .venv
@@ -19,28 +20,10 @@ pip install -r requirements.txt
 python pnw_deuce_music_ai.py
 ```
 
-## Example
+## Test
 
-```python
-from pnw_deuce_music_ai import (
-    compile_song_plan, build_theory_plan, build_drum_plan,
-    build_bass_plan, build_melody_plan, export_to_midi,
-)
-
-song = compile_song_plan({
-    "title": "Midnight Signal", "bpm": 92, "key": "C", "mode": "minor",
-    "time_signature": "4/4", "seed": 20260918, "total_bars": 8,
-})
-theory = build_theory_plan(song)
-output = export_to_midi(
-    song, theory, build_drum_plan(song), build_bass_plan(song, theory),
-    build_melody_plan(song, theory), "midnight_signal.mid",
-)
-print(output)
+```bash
+pytest -v
 ```
 
-## Architecture
-
-`request -> strict normalization -> immutable plans -> deterministic engines -> validated MIDI`
-
-Invalid data is rejected rather than silently repaired. The repository's tests cover imports, schema immutability, MIDI validation, and cross-process determinism.
+The subprocess determinism test compares both `SongPlan.model_dump_json()` and the bytes produced by the canonical mido exporter.
