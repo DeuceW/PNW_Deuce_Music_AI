@@ -16,7 +16,9 @@ def test_mido_type_one_480_ppq_and_tracks():
     assert isinstance(mid, mido.MidiFile)
     assert mid.type == 1
     assert mid.ticks_per_beat == 480
-    assert [track[0].name for track in mid.tracks] == ["track_name"]
+    assert [track[0].name for track in mid.tracks] == [
+        "Conductor", "Drums", "808", "Melody"
+    ]
     assert len(mid.tracks) == 4
 
 
