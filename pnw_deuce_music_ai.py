@@ -216,17 +216,17 @@ def export_mido_midi(plan: SongPlan) -> mido.MidiFile:
             drum_events.extend(((tick, 1, drum_map[hit.instrument], hit.velocity),
                                 (tick + max(1, ticks_per_step // 2), 0, drum_map[hit.instrument], 0)))
     _append_notes(drum_track, drum_events, 9)
-    drum_track.append(mido.MetaMessage("end_of_track", time=plan.bars * ticks_per_bar - sum(message.time for message in drum_track[1:])))
+    elapsed = sum(message.time for message in drum_track[1:])
+    drum_track.append(mido.MetaMessage("end_of_track", time=max(0, plan.bars * ticks_per_bar - elapsed)))
     mid.tracks.append(drum_track)
 
-    for name, channel, events in (
-        ("808", 0, [( (event.global_bar - 1) * ticks_per_bar + event.step * ticks_per_step, 1, event.midi_note, event.velocity) for event in plan.bass.events for _ in (0,)]),
-        ("Melody", 1, [( (note.global_bar - 1) * ticks_per_bar + note.step * ticks_per_step, 1, note.midi_note, note.velocity) for note in plan.melody.notes for _ in (0,)]),
+    for name, channel, source in (
+        ("808", 0, plan.bass.events),
+        ("Melody", 1, plan.melody.notes),
     ):
         track = mido.MidiTrack()
         track.append(mido.MetaMessage("track_name", name=name, time=0))
         expanded = []
-        source = plan.bass.events if channel == 0 else plan.melody.notes
         for item in source:
             start = (item.global_bar - 1) * ticks_per_bar + item.step * ticks_per_step
             pitch = item.midi_note
@@ -250,4 +250,10 @@ def export_to_midi(plan: SongPlan, output_path: str = "pnw_deuce_output.mid") ->
 
 
 if __name__ == "__main__":
-    export_to_midi(build_song_plan(20260918))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="PNW Deuce Music AI v1.1.1 - deterministic music generation")
+    parser.add_argument("--seed", type=int, default=20260918, help="RNG seed for build_song_plan")
+    parser.add_argument("--output", default="pnw_deuce_output.mid", help="Relative output path for the MIDI file")
+    args = parser.parse_args()
+    export_to_midi(build_song_plan(args.seed), args.output)
