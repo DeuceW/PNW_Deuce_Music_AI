@@ -17,7 +17,7 @@ The canonical implementation is `pnw_deuce_music_ai.py`. It is a deterministic, 
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python pnw_deuce_music_ai.py
+python pnw_deuce_music_ai.py --seed 20260918 --output pnw_deuce_output.mid
 ```
 
 ## Test

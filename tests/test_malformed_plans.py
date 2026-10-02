@@ -1,5 +1,5 @@
 import pytest
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from theory_validation import get_theory_event_for_bar
 
@@ -51,11 +51,11 @@ def test_out_of_range_duration_raises_error():
         step: int = Field(..., ge=0, le=15)
         duration_steps: int = Field(..., ge=1, le=16)
 
-        @classmethod
-        def validate_span(cls, values):
-            if values.get("step", 0) + values.get("duration_steps", 0) > 16:
+        @model_validator(mode="after")
+        def validate_span(self):
+            if self.step + self.duration_steps > 16:
                 raise ValueError("event exceeds 16-step bar")
-            return values
+            return self
 
     # Pydantic field bounds alone do not validate the combined span; validate
     # the malformed combination explicitly at the boundary.
