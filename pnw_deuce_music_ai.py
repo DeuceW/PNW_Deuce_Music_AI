@@ -3,10 +3,10 @@ from __future__ import annotations
 import io
 import random
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Literal, Tuple
 
 import mido
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PPQ = 480
 STEPS_PER_BAR = 16
@@ -52,7 +52,7 @@ class TheoryPlan(StrictFrozenModel):
 
 
 class DrumHit(StrictFrozenModel):
-    instrument: str
+    instrument: Literal["kick", "snare", "closed_hat"]
     bar: int = Field(..., ge=1)
     step: int = Field(..., ge=0, lt=STEPS_PER_BAR)
     velocity: int = Field(..., ge=1, le=127)
@@ -74,6 +74,12 @@ class BassEvent(StrictFrozenModel):
     duration_steps: int = Field(..., ge=1, le=STEPS_PER_BAR)
     velocity: int = Field(..., ge=1, le=127)
 
+    @model_validator(mode="after")
+    def validate_span(self):
+        if self.step + self.duration_steps > STEPS_PER_BAR:
+            raise ValueError("event exceeds 16-step bar")
+        return self
+
 
 class BassPlan(StrictFrozenModel):
     events: Tuple[BassEvent, ...]
@@ -85,6 +91,12 @@ class MelodyNote(StrictFrozenModel):
     midi_note: int = Field(..., ge=48, le=96)
     duration_steps: int = Field(..., ge=1, le=STEPS_PER_BAR)
     velocity: int = Field(..., ge=1, le=127)
+
+    @model_validator(mode="after")
+    def validate_span(self):
+        if self.step + self.duration_steps > STEPS_PER_BAR:
+            raise ValueError("event exceeds 16-step bar")
+        return self
 
 
 class MelodyPlan(StrictFrozenModel):
